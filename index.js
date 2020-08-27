@@ -53,18 +53,11 @@ async function processaPrecos(precos, data, regiao) {
     }
 }
 
-(async () => {
-    const options = new chrome.Options().headless()
-    const driver = await new selenium.Builder().forBrowser('chrome').setChromeOptions(options).build()
-
-    const url = "https://www.ccee.org.br/portal/faces/oracle/webcenter/portalapp/pages/publico/oquefazemos/produtos/precos/preco_horario_sombra_grafico.jspx"
-
-    const data = args[0]
-    const regiao = args[1]
-
+async function consultaPrecos(driver, api_url, data, regiao) {
+    const url = `${api_url}?periodo=${data}&aba=${regiao}`
     let precos = []
     try {
-        await driver.get(`${url}?periodo=${data}&aba=${regiao}`);
+        await driver.get(url);
         const tds = await driver.findElements(selenium.By.tagName('tr'));
 
         for (let i=1; i<tds.length; i++) {
@@ -76,8 +69,35 @@ async function processaPrecos(precos, data, regiao) {
                 })
             });
         }
-    } finally {
-        await driver.quit()
+    } catch (e) {
+        console.error(e);
     }
     await processaPrecos(precos, data, regiao)
+}
+
+(async () => {
+    const options = new chrome.Options().headless()
+    const driver = await new selenium.Builder().forBrowser('chrome').setChromeOptions(options).build()
+
+    const api_url = "https://www.ccee.org.br/portal/faces/oracle/webcenter/portalapp/pages/publico/oquefazemos/produtos/precos/preco_horario_sombra_grafico.jspx"
+
+    let data = [args[0]]
+    let regiao = [args[1]]
+
+    if (!args[0]) {
+        let now = new Date()
+        data = [`${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()}`]
+    }
+
+    if (!args[1]) {
+        regiao = ["sudeste", "sul", "nordeste", "norte"]
+    }
+
+    for (let i=0; i<data.length; i++) {
+        for (let k=0; k<regiao.length; k++) {
+            console.log(data[i], regiao[k])
+            await consultaPrecos(driver, api_url, data[i], regiao[k])
+        }
+    }
+
 })();
