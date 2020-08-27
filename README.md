@@ -10,6 +10,6 @@
 - Entre na pasta do código e instale com: ```npm install```
 
 ## Rodando o programa
-- Rode com: ```node index.js [data] [região]
+- Rode com: ```node index.js [data] [região]```
  - Onde [data] é a data no formato DD/MM/AAAA
  - E [região] é uma das opções: sudeste, sul, nordeste ou norte
