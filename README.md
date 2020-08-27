@@ -13,3 +13,4 @@
 - Rode com: ```node index.js [data] [região]```
  - Onde [data] é a data no formato DD/MM/AAAA
  - E [região] é uma das opções: sudeste, sul, nordeste ou norte
+- Rode sem parâmetros para salvar os preços do dia atual de todas as regiões
