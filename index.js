@@ -112,7 +112,7 @@ async function startCrawler(args) {
     if (!args[0]) {
         data = []
         let b = moment().subtract(1, 'days')
-        let a = moment().subtract(29, 'days')
+        let a = moment().subtract(31, 'days')
 
         for (var m = moment(a); m.diff(b, 'days') <= 0; m.add(1, 'days')) {
             data.push(m.format('DD/MM/YYYY'))
