@@ -143,4 +143,4 @@ async function startCrawler(args) {
     }
 }
 
-await startCrawler(args)
+startCrawler(args)
