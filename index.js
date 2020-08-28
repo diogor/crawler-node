@@ -104,8 +104,6 @@ async function consultaPrecos(api_url, data, regiao) {
 }
 
 async function startCrawler(args) {
-    console.log("Iniciando...")
-
     const api_url = "https://www.ccee.org.br/portal/faces/oracle/webcenter/portalapp/pages/publico/oquefazemos/produtos/precos/preco_horario_sombra_grafico.jspx"
 
     let data = [args[0]]
