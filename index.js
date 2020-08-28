@@ -113,8 +113,8 @@ async function startCrawler(args) {
 
     if (!args[0]) {
         data = []
-        let b = new moment()
-        let a = moment().subtract(30, 'days')
+        let b = moment().subtract(1, 'days')
+        let a = moment().subtract(29, 'days')
 
         for (var m = moment(a); m.diff(b, 'days') <= 0; m.add(1, 'days')) {
             data.push(m.format('DD/MM/YYYY'))
@@ -125,13 +125,15 @@ async function startCrawler(args) {
         regiao = ["sudeste", "sul", "nordeste", "norte"]
     }
 
+    for (let i=0; i<regiao.length; i++) {
+        consultaPrecos(api_url, moment().format('DD/MM/YYYY'), regiao[i])
+    }
+
     for (let i=0; i<data.length; i++) {
         for (let k=0; k<regiao.length; k++) {
             preConsultaPrecos(api_url, data[i], regiao[k])
         }
     }
-
 }
 
 startCrawler(args)
-setInterval(startCrawler, 60 * 60 * 1000)
