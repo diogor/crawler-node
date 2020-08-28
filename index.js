@@ -10,8 +10,12 @@ dotenv.config()
 const options = new chrome.Options().headless()
 const driver = await new selenium.Builder().forBrowser('chrome').setChromeOptions(options).build()
 
-const client = new pg.Client()
-await client.connect()
+const pool = new pg.Pool()
+
+pool.on('error', (err, _) => {
+    console.error('Erro no banco de dados:  ', err)
+    process.exit(-1)
+})
 
 async function preConsultaPrecos(api_url, data, regiao) {
     const d = data.split("/")
@@ -34,11 +38,16 @@ async function preConsultaPrecos(api_url, data, regiao) {
 }
 
 async function makeQuery(query, dados, callback) {
-    client.query(
-        query,
-        dados,
-        callback
-    )
+    const client = await pool.connect()
+    try {
+        client.query(
+            query,
+            dados,
+            callback
+        )
+    } finally {
+        client.release()
+    }
 }
 
 async function adicionaEntrada(dados) {
@@ -124,14 +133,14 @@ async function startCrawler(args) {
     }
 
     for (let i=0; i<regiao.length; i++) {
-        consultaPrecos(api_url, moment().format('DD/MM/YYYY'), regiao[i])
+        await consultaPrecos(api_url, moment().format('DD/MM/YYYY'), regiao[i])
     }
 
     for (let i=0; i<data.length; i++) {
         for (let k=0; k<regiao.length; k++) {
-            preConsultaPrecos(api_url, data[i], regiao[k])
+            await preConsultaPrecos(api_url, data[i], regiao[k])
         }
     }
 }
 
-startCrawler(args)
+await startCrawler(args)
