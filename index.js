@@ -7,6 +7,12 @@ import pg from 'pg'
 const args = process.argv.slice(2)
 dotenv.config()
 
+const client = new pg.Client()
+await client.connect()
+
+const options = new chrome.Options().headless()
+const driver = await new selenium.Builder().forBrowser('chrome').setChromeOptions(options).build()
+
 
 async function preConsultaPrecos(api_url, data, regiao) {
     const d = data.split("/")
@@ -21,15 +27,13 @@ async function preConsultaPrecos(api_url, data, regiao) {
         (err, res) => {
             if (err) {
                 console.log(err.stack)
-                client.end()
                 return
             }
             if (res.rowCount > 0) {
-                client.end()
                 return
+            } else {
+                consultaPrecos(api_url, data, regiao)
             }
-            consultaPrecos(api_url, data, regiao)
-            client.end()
         }
     )
 }
@@ -45,9 +49,6 @@ async function processaPrecos(precos, data, regiao) {
         const hora = parseInt(p[0].split(":")[0])
         const valor = parseFloat(p[p.length-1].replace(",", ".")).toFixed(2)
         const dados = [dia, hora, regiao, valor]
-        
-        const client = new pg.Client()
-        await client.connect()
 
         client.query(
             updateQuery,
@@ -55,11 +56,9 @@ async function processaPrecos(precos, data, regiao) {
             (err, res) => {
                 if (err) {
                     console.log(err.stack)
-                    client.end()
                     return
                 }
                 if (res.rowCount > 0) {
-                    client.end()
                     return
                 }
                 client.query(
@@ -68,10 +67,6 @@ async function processaPrecos(precos, data, regiao) {
                     (err, _) => {
                         if (err) {
                             console.log(err.stack)
-                            client.end()
-                        }
-                        else {
-                            client.end()
                         }
                     }
                 )
@@ -81,9 +76,6 @@ async function processaPrecos(precos, data, regiao) {
 }
 
 async function consultaPrecos(api_url, data, regiao) {
-    const options = new chrome.Options().headless()
-    const driver = await new selenium.Builder().forBrowser('chrome').setChromeOptions(options).build()
-
     const url = `${api_url}?periodo=${data}&aba=${regiao}`
     let precos = []
     try {
@@ -101,6 +93,8 @@ async function consultaPrecos(api_url, data, regiao) {
         }
     } catch (e) {
         console.error(e);
+    } finally {
+        //await driver.close()
     }
     await processaPrecos(precos, data, regiao)
 }
@@ -130,5 +124,9 @@ async function consultaPrecos(api_url, data, regiao) {
             await preConsultaPrecos(api_url, data[i], regiao[k])
         }
     }
+
+    client.close()
+    driver.close()
+    driver.quit()
 
 })();
