@@ -8,7 +8,7 @@ import pg from 'pg'
 const args = process.argv.slice(2)
 dotenv.config()
 const options = new chrome.Options().headless()
-const driver = await new selenium.Builder().forBrowser('chrome').setChromeOptions(options).build()
+const driver = new selenium.Builder().forBrowser('chrome').setChromeOptions(options).build()
 
 const pool = new pg.Pool()
 
