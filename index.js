@@ -7,6 +7,33 @@ import pg from 'pg'
 const args = process.argv.slice(2)
 dotenv.config()
 
+
+async function preConsultaPrecos(api_url, data, regiao) {
+    const d = data.split("/")
+    const dia = `${d[2]}-${d[1]}-${d[0]}`
+    const client = new pg.Client()
+    await client.connect()
+    const selectQuery = 'SELECT * FROM pldhorario where dia = $1 and submercado = $2'
+
+    client.query(
+        selectQuery,
+        [dia, regiao],
+        (err, res) => {
+            if (err) {
+                console.log(err.stack)
+                client.end()
+                return
+            }
+            if (res.rowCount > 0) {
+                client.end()
+                return
+            }
+            consultaPrecos(api_url, data, regiao)
+            client.end()
+        }
+    )
+}
+
 async function processaPrecos(precos, data, regiao) {
     const insertQuery = 'INSERT INTO pldhorario (dia, hora, submercado, preco) VALUES($1, $2, $3, $4) RETURNING *'
     const updateQuery = 'UPDATE pldhorario SET dia = $1, hora = $2, submercado = $3, preco = $4 where dia = $1 and hora = $2 and submercado = $3 and preco = $4'
@@ -53,7 +80,10 @@ async function processaPrecos(precos, data, regiao) {
     }
 }
 
-async function consultaPrecos(driver, api_url, data, regiao) {
+async function consultaPrecos(api_url, data, regiao) {
+    const options = new chrome.Options().headless()
+    const driver = await new selenium.Builder().forBrowser('chrome').setChromeOptions(options).build()
+
     const url = `${api_url}?periodo=${data}&aba=${regiao}`
     let precos = []
     try {
@@ -76,17 +106,19 @@ async function consultaPrecos(driver, api_url, data, regiao) {
 }
 
 (async () => {
-    const options = new chrome.Options().headless()
-    const driver = await new selenium.Builder().forBrowser('chrome').setChromeOptions(options).build()
-
     const api_url = "https://www.ccee.org.br/portal/faces/oracle/webcenter/portalapp/pages/publico/oquefazemos/produtos/precos/preco_horario_sombra_grafico.jspx"
 
     let data = [args[0]]
     let regiao = [args[1]]
 
     if (!args[0]) {
+        data = []
         let now = new Date()
-        data = [`${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()}`]
+        let donte = new Date()
+        for (let i = 0; i < 31; i++) {
+            donte.setDate(now.getDate() - i);
+            data.push(`${donte.getDate()}/${donte.getMonth()+1}/${donte.getFullYear()}`)
+        }
     }
 
     if (!args[1]) {
@@ -95,8 +127,7 @@ async function consultaPrecos(driver, api_url, data, regiao) {
 
     for (let i=0; i<data.length; i++) {
         for (let k=0; k<regiao.length; k++) {
-            console.log(data[i], regiao[k])
-            await consultaPrecos(driver, api_url, data[i], regiao[k])
+            await preConsultaPrecos(api_url, data[i], regiao[k])
         }
     }
 
