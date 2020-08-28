@@ -11,6 +11,7 @@
   "license": "MIT",
   "dependencies": {
     "dotenv": "^8.2.0",
+    "moment": "^2.27.0",
     "pg": "^8.3.2",
     "selenium-webdriver": "^4.0.0-alpha.7"
   }

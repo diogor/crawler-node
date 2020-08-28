@@ -1,47 +1,70 @@
 import selenium from 'selenium-webdriver'
 import chrome from 'selenium-webdriver/chrome.js'
+import moment from 'moment'
 import dotenv from 'dotenv'
 import pg from 'pg'
 
 
 const args = process.argv.slice(2)
 dotenv.config()
-
 const client = new pg.Client()
 await client.connect()
-
 const options = new chrome.Options().headless()
 const driver = await new selenium.Builder().forBrowser('chrome').setChromeOptions(options).build()
 
-
-async function preConsultaPrecos(api_url, data, regiao) {
+function preConsultaPrecos(api_url, data, regiao) {
     const d = data.split("/")
     const dia = `${d[2]}-${d[1]}-${d[0]}`
-    const client = new pg.Client()
-    await client.connect()
     const selectQuery = 'SELECT * FROM pldhorario where dia = $1 and submercado = $2'
 
     client.query(
         selectQuery,
         [dia, regiao],
-        (err, res) => {
+        async (err, res) => {
             if (err) {
                 console.log(err.stack)
                 return
             }
-            if (res.rowCount > 0) {
-                return
-            } else {
+            if (res.rowCount == 0) {
                 consultaPrecos(api_url, data, regiao)
             }
         }
     )
 }
 
-async function processaPrecos(precos, data, regiao) {
+async function adicionaEntrada(dados) {
     const insertQuery = 'INSERT INTO pldhorario (dia, hora, submercado, preco) VALUES($1, $2, $3, $4) RETURNING *'
     const updateQuery = 'UPDATE pldhorario SET dia = $1, hora = $2, submercado = $3, preco = $4 where dia = $1 and hora = $2 and submercado = $3 and preco = $4'
-    
+
+    const client = new pg.Client()
+    await client.connect()
+
+    client.query(
+        updateQuery,
+        dados,
+        (err, res) => {
+            if (err) {
+                console.log(err.stack)
+            }
+            if (res.rowCount > 0) {
+                console.log(dados, "-> Atualizando")
+            } else {
+                client.query(
+                    insertQuery,
+                    dados,
+                    (err, _) => {
+                        if (err) {
+                            console.log(err.stack)
+                        }
+                            console.log(dados, "-> Novo registro")
+                    }
+                )
+            }
+        }
+    )
+}
+
+async function processaPrecos(precos, data, regiao) {
     for (let i=0; i<precos.length; i++) {
         const p = precos[i]
         const d = data.split("/")
@@ -50,28 +73,7 @@ async function processaPrecos(precos, data, regiao) {
         const valor = parseFloat(p[p.length-1].replace(",", ".")).toFixed(2)
         const dados = [dia, hora, regiao, valor]
 
-        client.query(
-            updateQuery,
-            dados,
-            (err, res) => {
-                if (err) {
-                    console.log(err.stack)
-                    return
-                }
-                if (res.rowCount > 0) {
-                    return
-                }
-                client.query(
-                    insertQuery,
-                    dados,
-                    (err, _) => {
-                        if (err) {
-                            console.log(err.stack)
-                        }
-                    }
-                )
-            }
-        )
+        adicionaEntrada(dados)
     }
 }
 
@@ -81,7 +83,6 @@ async function consultaPrecos(api_url, data, regiao) {
     try {
         await driver.get(url);
         const tds = await driver.findElements(selenium.By.tagName('tr'));
-
         for (let i=1; i<tds.length; i++) {
             await tds[i].getText().then(s => {
                 let linha = s.split(" ")
@@ -91,15 +92,13 @@ async function consultaPrecos(api_url, data, regiao) {
                 })
             });
         }
+        processaPrecos(precos, data, regiao)
     } catch (e) {
         console.error(e);
-    } finally {
-        //await driver.close()
     }
-    await processaPrecos(precos, data, regiao)
 }
 
-(async () => {
+async function startCrawler() {
     const api_url = "https://www.ccee.org.br/portal/faces/oracle/webcenter/portalapp/pages/publico/oquefazemos/produtos/precos/preco_horario_sombra_grafico.jspx"
 
     let data = [args[0]]
@@ -107,11 +106,11 @@ async function consultaPrecos(api_url, data, regiao) {
 
     if (!args[0]) {
         data = []
-        let now = new Date()
-        let donte = new Date()
-        for (let i = 0; i < 31; i++) {
-            donte.setDate(now.getDate() - i);
-            data.push(`${donte.getDate()}/${donte.getMonth()+1}/${donte.getFullYear()}`)
+        let b = new moment()
+        let a = moment().subtract(30, 'days')
+
+        for (var m = moment(a); m.diff(b, 'days') <= 0; m.add(1, 'days')) {
+            data.push(m.format('DD/MM/YYYY'))
         }
     }
 
@@ -121,12 +120,11 @@ async function consultaPrecos(api_url, data, regiao) {
 
     for (let i=0; i<data.length; i++) {
         for (let k=0; k<regiao.length; k++) {
-            await preConsultaPrecos(api_url, data[i], regiao[k])
+            preConsultaPrecos(api_url, data[i], regiao[k])
         }
     }
 
-    client.close()
-    driver.close()
-    driver.quit()
+}
 
-})();
+startCrawler()
+setInterval(startCrawler, 60 * 60 * 1000);
