@@ -115,27 +115,25 @@ async function consultaPrecos(api_url, data, regiao) {
 async function startCrawler(args) {
     const api_url = "https://www.ccee.org.br/portal/faces/oracle/webcenter/portalapp/pages/publico/oquefazemos/produtos/precos/preco_horario_sombra_grafico.jspx"
 
-    let data = [args[0]]
+    let data = []
     let regiao = [args[1]]
+    let b = moment()
+    let a = moment().subtract(30, 'days')
 
-    if (!args[0]) {
-        data = []
-        let b = moment().subtract(1, 'days')
-        let a = moment().subtract(31, 'days')
+    if (args[0]) {
+        data = [args[0]]
+	    const dia = args[0].split("/")
+	    b = moment()
+        a = moment(dia[2]+"-"+dia[1]+"-"+dia[0])
+    }
 
-        for (var m = moment(a); m.diff(b, 'days') <= 0; m.add(1, 'days')) {
-            data.push(m.format('DD/MM/YYYY'))
-        }
+    for (var m = moment(a); m.diff(b, 'days') <= 0; m.add(1, 'days')) {
+       data.push(m.format('DD/MM/YYYY'))
     }
 
     if (!args[1]) {
         regiao = ["sudeste", "sul", "nordeste", "norte"]
     }
-
-    for (let i=0; i<regiao.length; i++) {
-        await consultaPrecos(api_url, moment().format('DD/MM/YYYY'), regiao[i])
-    }
-
     for (let i=0; i<data.length; i++) {
         for (let k=0; k<regiao.length; k++) {
             await preConsultaPrecos(api_url, data[i], regiao[k])
