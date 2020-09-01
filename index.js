@@ -82,7 +82,7 @@ async function processaPrecos(data, regiao, api_url) {
     await driver.get(url);
     const tds = await driver.findElements(selenium.By.tagName('tr'));
 
-    if (tds.length < 1) console.log(`-> Erro buscando data: ${data}`)
+    if (tds.length < 1) console.error(`-> Erro buscando data: ${data}`)
 
     for (let i=1; i<tds.length; i++) {
         await tds[i].getText().then(s => {
